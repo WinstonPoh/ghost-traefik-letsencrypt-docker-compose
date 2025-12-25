@@ -85,6 +85,7 @@ services:
 
   traefik:
     image: ${TRAEFIK_IMAGE_TAG}
+    group_add: ["998"]
     command:
       # Set the log level (DEBUG, INFO, WARN, ERROR)
       - "--log.level=${TRAEFIK_LOG_LEVEL}"
