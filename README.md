@@ -1,13 +1,49 @@
 # Ghost with Let's Encrypt Using Docker Compose
 
-[![Deployment Verification](https://github.com/heyvaldemar/ghost-traefik-letsencrypt-docker-compose/actions/workflows/00-deployment-verification.yml/badge.svg)](https://github.com/heyvaldemar/ghost-traefik-letsencrypt-docker-compose/actions)
+## New notes
 
-The badge displayed on my repository indicates the status of the deployment verification workflow as executed on the latest commit to the main branch.
+Original notes are in the following section. This section is after my own tweaks.
 
-**Passing**: This means the most recent commit has successfully passed all deployment checks, confirming that the Docker Compose setup functions correctly as designed.
+Main tweaks include using docker hardened images. you would need to get a dhi account to download and use the images. Then, these images may have stricter behaviour than the original images.
 
-📙 The complete installation guide is available on my [website](https://www.heyvaldemar.com/install-ghost-using-docker-compose/).
+The hardened mysql (dhi.io/mysql:8.4) and traefik (dhi.io/traefik:3) images, defined in .env require that the mounted volumes have the correct permissions.
+The user and groups defined for these images are available on dhi e.g. [here](https://hub.docker.com/hardened-images/catalog/dhi/traefik/images)
 
+### mysql
+When you try to run `docker compose up -d` you might come across ghost container having access errors to the db. This is because the mysql image requires that the mounted volume has the correct permissions. 
+- You _might_ need to install mysql on your host machine, I had it so I'm assuming this.
+- You would need to add the correct ownership to the `/var/lib/mysql` directory; typically this is already the `mysql` user, and the group id is `133`.
+- You would need to add the `group_add` to the mysql service in the `docker-compose.yml` file, with the correct group_id. Check `getent group mysql` for your `mysql` user's group id, mine was 133.
+
+- You would need to create the database and the user with the password manually. 
+```
+$ docker exec -it ghost-traefik-letsencrypt-docker-compose-mysql-1  mysql -u root -p
+$ mysql > CREATE DATABASE ghostdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+$ mysql > CREATE USER 'ghost'@'%' IDENTIFIED BY 'your_password';
+$ mysql > GRANT ALL PRIVILEGES ON ghostdb.* TO 'ghost'@'%';
+$ mysql > FLUSH PRIVILEGES;
+$ exit;
+```
+- even with the above considerations, you might have some issues. I came across ghost failing with some migration error. You might need to manually unlock the migration, and then restart ghost.
+```
+$ mysql > UPDATE migrations_lock SET locked=0 WHERE lock_key='km01'; 
+```
+
+### traefik
+The traefik image requires that the volume to be mounted, `/etc/traefik/acme/acme.json` to EXIST on your host, and have the correct permissions.
+- note that now the mounted volume on the traefik service volume is not a named volume, but the host directory.
+- You would need to create the `acme.json` file with the correct permissions. 
+```
+$ mkdir -p /etc/traefik/acme
+$ touch /etc/traefik/acme/acme.json
+$ chmod 600 /etc/traefik/acme/acme.json
+$ chown 65532:65532 /etc/traefik/acme/acme.json
+```
+- note that 65532 is for "nobody" or `nonroot`. You can find the group id by running `getent group docker` on your host, and then you'd add the group id to the `group_add` in the traefik service in the `docker-compose.yml` file.
+- pretty sure the ping entrypoint has to be `traefik` instead of `ping`.
+- healthcheck has to be changed to use traefik instead of ping too.
+
+## old notes
 ❗ Change variables in the `.env` to meet your requirements.
 
 💡 Note that the `.env` file should be in the same directory as `ghost-traefik-letsencrypt-docker-compose.yml`.

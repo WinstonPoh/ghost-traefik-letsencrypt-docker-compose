@@ -15,6 +15,7 @@ volumes:
 services:
   mysql:
     image: ${GHOST_MYSQL_IMAGE_TAG}
+    group_add: ["133"]
     volumes:
       - mysql-data:/var/lib/mysql
     environment:
@@ -94,7 +95,7 @@ services:
       # Enable the /ping endpoint so we can health-check Traefik
       - "--ping=true"
       # Assign the /ping endpoint to a dedicated entry point on port 8082
-      - "--ping.entrypoint=ping"
+      - "--ping.entrypoint=traefik"
       - "--entrypoints.ping.address=:8082"
       # Define the primary HTTP entry point on port 80
       - "--entrypoints.web.address=:80"
@@ -126,14 +127,14 @@ services:
       - "--global.sendanonymoususage=false"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik-certificates:/etc/traefik/acme
+      - /etc/traefik/acme:/etc/traefik/acme
     networks:
       - traefik-network
     ports:
       - "80:80"
       - "443:443"
     healthcheck:
-      test: ["CMD", "wget", "http://localhost:8082/ping","--spider"]
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 10s
       timeout: 5s
       retries: 3
