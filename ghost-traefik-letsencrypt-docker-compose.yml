@@ -32,6 +32,11 @@ services:
       retries: 3
       start_period: 60s
     restart: unless-stopped
+    mem_limit: 600M
+    mem_reservation: 512M
+    command: 
+      - --innodb_buffer_pool_size=512M
+      - --max_connections=50
 
   ghost:
     image: ${GHOST_IMAGE_TAG}

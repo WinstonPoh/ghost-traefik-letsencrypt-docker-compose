@@ -43,6 +43,7 @@ $ chown 65532:65532 /etc/traefik/acme/acme.json
 - pretty sure the ping entrypoint has to be `traefik` instead of `ping`.
 - healthcheck has to be changed to use traefik instead of ping too.
 
+run `docker compose -f ./ghost-traefik-letsencrypt-docker-compose.yml up -d` and you should be good to go.
 ## old notes
 ❗ Change variables in the `.env` to meet your requirements.
 
